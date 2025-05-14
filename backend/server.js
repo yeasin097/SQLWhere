@@ -51,26 +51,25 @@ db.serialize(() => {
 app.get('/api/products', (req, res) => {
   const categoryId = req.query.category || 'all';
   let query;
-  
+
   if (categoryId === 'all') {
-    // Even this case is vulnerable as it doesn't properly filter out unreleased products
     query = `SELECT * FROM products WHERE release_status = 'public'`;
   } else {
-    // VULNERABILITY: Direct string concatenation in SQL query
     query = `SELECT * FROM products WHERE category_id = '${categoryId}' AND release_status = 'public'`;
   }
 
   console.log("Executing SQL:", query);
 
-  
   db.all(query, (err, rows) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: 'Database error' });
     }
-    res.json(rows);
+    // ✅ Send both the query and the data
+    res.json({ sql: query, data: rows });
   });
 });
+
 
 // API endpoint for categories
 app.get('/api/categories', (req, res) => {
@@ -81,7 +80,7 @@ app.get('/api/categories', (req, res) => {
       console.error(err);
       return res.status(500).json({ error: 'Database error' });
     }
-    res.json(rows);
+    res.json({ sql: query, data: rows });
   });
 });
 

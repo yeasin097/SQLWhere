@@ -8,14 +8,12 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [autoFetch, setAutoFetch] = useState(true);
+  const [querySQL, setQuerySQL] = useState('');
   const location = useLocation();
 
-  // Always read raw category directly from the URL
-  const queryParams = new URLSearchParams(location.search);
-  const rawCategory = queryParams.get('category') ?? 'all';
-
-  // Update selectedCategory for dropdown (does NOT affect fetch)
+  // Read query parameters from URL
   useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
     const categoryParam = queryParams.get('category');
     const manualParam = queryParams.get('manual');
 
@@ -24,31 +22,33 @@ function Home() {
     }
 
     if (manualParam === 'true') {
-      setAutoFetch(false);
+      setAutoFetch(false); // disable auto fetching for testing
     }
   }, [location.search]);
 
-  // Use rawCategory for fetching (allows injections)
+  // Fetch products only if autoFetch is true
   useEffect(() => {
     if (!autoFetch) return;
 
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        console.log('[FETCH] Raw category query:', rawCategory);
+        console.log('[FETCH] Category:', selectedCategory);
+        const rawCategory = selectedCategory;
         const response = await axios.get(`http://localhost:3000/api/products?category=${encodeURIComponent(rawCategory)}`);
-        setProducts(response.data);
+        setProducts(response.data.data);  // updated: access 'data' key
+        setQuerySQL(response.data.sql);   // new: show SQL query
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching products:', error);
-      } finally {
         setLoading(false);
       }
     };
 
     fetchProducts();
-  }, [rawCategory, autoFetch]);
+  }, [selectedCategory, autoFetch]);
 
-  // Update URL based on selectedCategory (for dropdown use)
+  // Update URL when selectedCategory changes (but NOT when manual mode is on)
   useEffect(() => {
     if (!autoFetch) return;
 
@@ -84,7 +84,7 @@ function Home() {
 
       {products.length === 0 ? (
         <div className="alert alert-info">
-          No products found. Try a different category or injection payload.
+          No products found. Try a different category.
         </div>
       ) : (
         <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
@@ -115,13 +115,24 @@ function Home() {
         <div className="card-body">
           <h5 className="card-title">Query Information</h5>
           <p className="card-text"><strong>Total products shown:</strong> {products.length}</p>
-          <p className="card-text"><strong>Raw category parameter:</strong> <code>{rawCategory}</code></p>
+          <p className="card-text"><strong>Current filter:</strong> {selectedCategory === 'all' ? 'All Categories' : `Category ID ${selectedCategory}`}</p>
           <div className="alert alert-secondary">
             <strong>URL:</strong> <code>{window.location.href}</code><br />
-            <strong>Mode:</strong> {autoFetch ? "Auto-fetch enabled" : "Manual test mode (no automatic fetch)"}
+            <strong>Mode:</strong> {autoFetch ? "Auto-fetch enabled" : "Manual test mode"}
           </div>
         </div>
       </div>
+
+      {querySQL && (
+        <div className="card mt-4 bg-light">
+          <div className="card-body">
+            <h5 className="card-title">Executed SQL Query</h5>
+            <pre className="bg-dark text-white p-3 rounded">
+              {querySQL}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
