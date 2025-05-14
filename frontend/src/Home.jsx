@@ -10,9 +10,12 @@ function Home() {
   const [autoFetch, setAutoFetch] = useState(true);
   const location = useLocation();
 
-  // Read query parameters from URL
+  // Always read raw category directly from the URL
+  const queryParams = new URLSearchParams(location.search);
+  const rawCategory = queryParams.get('category') ?? 'all';
+
+  // Update selectedCategory for dropdown (does NOT affect fetch)
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
     const categoryParam = queryParams.get('category');
     const manualParam = queryParams.get('manual');
 
@@ -21,31 +24,31 @@ function Home() {
     }
 
     if (manualParam === 'true') {
-      setAutoFetch(false); // disable auto fetching for testing
+      setAutoFetch(false);
     }
   }, [location.search]);
 
-  // Fetch products only if autoFetch is true
+  // Use rawCategory for fetching (allows injections)
   useEffect(() => {
     if (!autoFetch) return;
 
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        console.log('[FETCH] Category:', selectedCategory);
-        const response = await axios.get(`http://localhost:3000/api/products?category=${selectedCategory}`);
+        console.log('[FETCH] Raw category query:', rawCategory);
+        const response = await axios.get(`http://localhost:3000/api/products?category=${encodeURIComponent(rawCategory)}`);
         setProducts(response.data);
-        setLoading(false);
       } catch (error) {
         console.error('Error fetching products:', error);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchProducts();
-  }, [selectedCategory, autoFetch]);
+  }, [rawCategory, autoFetch]);
 
-  // Update URL when selectedCategory changes (but NOT when manual mode is on)
+  // Update URL based on selectedCategory (for dropdown use)
   useEffect(() => {
     if (!autoFetch) return;
 
@@ -81,7 +84,7 @@ function Home() {
 
       {products.length === 0 ? (
         <div className="alert alert-info">
-          No products found. Try a different category.
+          No products found. Try a different category or injection payload.
         </div>
       ) : (
         <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
@@ -112,10 +115,10 @@ function Home() {
         <div className="card-body">
           <h5 className="card-title">Query Information</h5>
           <p className="card-text"><strong>Total products shown:</strong> {products.length}</p>
-          <p className="card-text"><strong>Current filter:</strong> {selectedCategory === 'all' ? 'All Categories' : `Category ID ${selectedCategory}`}</p>
+          <p className="card-text"><strong>Raw category parameter:</strong> <code>{rawCategory}</code></p>
           <div className="alert alert-secondary">
             <strong>URL:</strong> <code>{window.location.href}</code><br />
-            <strong>Mode:</strong> {autoFetch ? "Auto-fetch enabled" : "Manual test mode"}
+            <strong>Mode:</strong> {autoFetch ? "Auto-fetch enabled" : "Manual test mode (no automatic fetch)"}
           </div>
         </div>
       </div>
