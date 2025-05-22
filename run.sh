@@ -7,10 +7,12 @@ set -e
 echo "🔧 Setting up backend..."
 cd backend
 npm install
-npm start &  # run in background
+npm start > backend.log 2>&1 &  # run in background and redirect output
 
 # Go back to the root and go to frontend
 cd ../frontend
 echo "🎨 Setting up frontend..."
 npm install
-npm run dev
+npm run dev > frontend.log 2>&1 &  # run in background and redirect output
+
+echo "✅ Both backend and frontend are running in the background."
